@@ -1,18 +1,25 @@
 # System Patterns
 
-This document describes the system architecture, key technical decisions, design patterns in use, and component relationships.
+This document describes the system architecture, key technical decisions, design patterns in use, and component relationships for health.ubq.fi.
 
 ## Architecture Overview
-- [Describe the high-level architecture]
-- [Outline major components and their responsibilities]
-- [Illustrate data flow]
+- **Modular Design**: Separated into API, Dashboard, Storage, and Utils modules
+- **API Layer**: Handles health check requests and caching
+- **Dashboard**: Static HTML/JS frontend for visualization
+- **Storage**: Key-value storage using Deno KV
+- **Utils**: Shared utility functions
 
 ## Design Patterns
-- [List key design patterns used]
-- [Explain pattern implementations]
-- [Note pattern variations]
+1. **Proxy Pattern**: Used in `api/proxy.ts` to forward requests
+2. **Singleton Pattern**: KV storage instance in `storage/kv.ts`
+3. **Facade Pattern**: Simplified API in `api/services.ts`
 
 ## Component Relationships
-- [Describe how components interact]
-- [Outline dependencies between modules]
-- [Document integration points]
+```mermaid
+flowchart TD
+    Dashboard --> API
+    API --> Services
+    Services --> Storage[KV Storage]
+    Services --> Legacy[Legacy API]
+    Utils --> API
+    Utils --> Dashboard

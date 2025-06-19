@@ -1,23 +1,28 @@
 # Progress
 
-This document tracks what works, what's left to build, current status, and known issues.
+This document tracks what works, what's left to build, current status, and known issues for health.ubq.fi.
 
 ## Current Status
-- [Describe overall project status]
-- [Note milestones achieved]
-- [Outline release progress]
+- Documentation initialized
+- Basic API endpoints implemented
+- Dashboard skeleton created
+- KV storage mechanism in place
 
 ## What Works
-- [List completed features]
-- [Document tested functionality]
-- [Note stable components]
+- API proxy functionality (`api/proxy.ts`)
+- KV storage operations (`storage/kv.ts`)
+- Health checker utility (`utils/health-checker.ts`)
+- Dashboard HTML structure (`dashboard/index.html`)
 
 ## What's Left
-- [Outline remaining features]
-- [List known tasks]
-- [Document planned improvements]
+- Implement caching mechanism
+- Complete dashboard visualization
+- Add health check scheduling
+- Implement legacy API support
+- Write comprehensive tests
 
 ## Known Issues
-- [List identified bugs]
-- [Note limitations]
-- [Document workarounds]
+- Dashboard doesn't auto-refresh status
+- No error handling for failed health checks
+- KV storage not persisted between restarts
+- Limited API documentation

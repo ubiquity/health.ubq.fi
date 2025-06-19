@@ -15,11 +15,12 @@ A standalone Deno Deploy application for monitoring the health of all UBQ.FI ser
 
 ```
 health-app/
+├── src/           # Source code
+│   └── deno.ts    # Deno Deploy entry point
 ├── api/           # API endpoint handlers
 ├── storage/       # Deno KV operations and types
 ├── utils/         # Health checking and router API utilities
-├── dashboard/     # Static dashboard files
-└── main.ts        # Deno Deploy entry point
+└── dashboard/     # Static dashboard files
 ```
 
 ## API Endpoints
@@ -42,7 +43,7 @@ curl -fsSL https://deno.land/install.sh | sh
 deno task dev
 
 # Or with manual command
-deno run --allow-net --allow-env --allow-read --allow-write --watch main.ts
+deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv --watch src/deno.ts
 ```
 
 ## Deployment

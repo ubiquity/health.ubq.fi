@@ -3,11 +3,11 @@
  * Standalone health monitoring application
  */
 
-import { handleGetServices } from './api/services.ts'
-import { handleGetCache } from './api/cache.ts'
-import { handleUpdateHealth } from './api/update.ts'
-import { handleProxyStatus, handleProxyManifest } from './api/proxy.ts'
-import { handleLegacyHealthApi } from './api/legacy.ts'
+import { handleGetServices } from '../api/services.ts'
+import { handleGetCache } from '../api/cache.ts'
+import { handleUpdateHealth } from '../api/update.ts'
+import { handleProxyStatus, handleProxyManifest } from '../api/proxy.ts'
+import { handleLegacyHealthApi } from '../api/legacy.ts'
 
 async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url)
