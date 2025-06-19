@@ -3,11 +3,11 @@
  * Standalone health monitoring application
  */
 
-import { handleGetServices } from '../api/services.ts'
-import { handleGetCache } from '../api/cache.ts'
-import { handleUpdateHealth } from '../api/update.ts'
-import { handleProxyStatus, handleProxyManifest } from '../api/proxy.ts'
-import { handleLegacyHealthApi } from '../api/legacy.ts'
+import { handleGetServices } from './api/services.ts'
+import { handleGetCache } from './api/cache.ts'
+import { handleUpdateHealth } from './api/update.ts'
+import { handleProxyStatus, handleProxyManifest } from './api/proxy.ts'
+import { handleLegacyHealthApi } from './api/legacy.ts'
 
 async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url)
@@ -67,7 +67,7 @@ async function handleRequest(request: Request): Promise<Response> {
 
 async function handleHealthDashboard(path: string = '/'): Promise<Response> {
   if (path === '/health-checker.js') {
-    const jsContent = await Deno.readTextFile('./dashboard/health-checker.js')
+    const jsContent = await Deno.readTextFile('./src/client/dashboard/health-checker.js')
     return new Response(jsContent, {
       headers: {
         'Content-Type': 'application/javascript',
@@ -76,7 +76,7 @@ async function handleHealthDashboard(path: string = '/'): Promise<Response> {
     })
   }
 
-  const dashboardHtml = await Deno.readTextFile('./dashboard/index.html')
+  const dashboardHtml = await Deno.readTextFile('./src/client/dashboard/index.html')
 
   return new Response(dashboardHtml, {
     headers: {
