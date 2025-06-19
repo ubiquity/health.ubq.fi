@@ -86,7 +86,11 @@ async function handleHealthDashboard(path: string = '/'): Promise<Response> {
   })
 }
 
-// Start the server
-Deno.serve({ port: 8000 }, handleRequest)
+// Export the handler as default for Deno Deploy
+export default { fetch: handleRequest }
 
-console.log('🩺 UBQ.FI Health Monitor started on http://localhost:8000')
+// For local development
+if (import.meta.main) {
+  Deno.serve({ port: 8000 }, handleRequest)
+  console.log('🩺 UBQ.FI Health Monitor started on http://localhost:8000')
+}

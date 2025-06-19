@@ -47,10 +47,34 @@ deno run --allow-net --allow-env --allow-read --allow-write --watch main.ts
 
 ## Deployment
 
-Deploy to Deno Deploy:
+This project is configured for automatic deployment to Deno Deploy using GitHub Actions.
+
+### Automatic Deployment
+
+The repository includes a GitHub Actions workflow (`.github/workflows/deno-deploy.yml`) that:
+
+- Deploys automatically on push to any branch
+- Uses different environments for `main` branch (production) vs other branches (development)
+- Supports manual deployment via workflow dispatch
+- Automatically deletes deployments when branches are deleted
+
+### Setup Requirements
+
+1. **Deno Deploy Token**: Add `DENO_DEPLOY_TOKEN` to your GitHub repository secrets
+   - Get this token from your Deno Deploy dashboard
+   - Go to Repository Settings → Secrets and variables → Actions
+   - Add a new repository secret named `DENO_DEPLOY_TOKEN`
+
+2. **Environment Configuration** (optional):
+   - Create `main` and `development` environments in GitHub repository settings
+   - Configure any environment-specific variables if needed
+
+### Manual Deployment
+
+You can also deploy manually to Deno Deploy:
 
 1. Connect your GitHub repository to Deno Deploy
-2. Set the entry point to `health-app/main.ts`
+2. Set the entry point to `main.ts`
 3. Configure environment variables if needed
 4. Deploy
 
