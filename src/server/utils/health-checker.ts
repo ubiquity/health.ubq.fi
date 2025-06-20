@@ -8,37 +8,70 @@ import type { ProxyStatusResponse, ProxyManifestResponse } from '../storage/type
  * Check service health status
  */
 export async function checkServiceHealth(domain: string): Promise<ProxyStatusResponse> {
-  try {
-    const targetUrl = `https://${domain}`
-    const response = await fetch(targetUrl, {
-      method: 'HEAD',
-      signal: AbortSignal.timeout(15000)
-    })
+  const MAX_RETRIES = 2;
+  const INITIAL_TIMEOUT = 5000; // 5s
+  let lastError: Error | undefined;
+  
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const targetUrl = `https://${domain}`;
+      const timeout = INITIAL_TIMEOUT * (attempt + 1);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    const deploymentStatus = response.status === 404 ? 'not-deployed' :
-                           response.ok ? 'deployed-healthy' : 'deployed-unhealthy'
+      const response = await fetch(targetUrl, {
+        method: 'HEAD',
+        signal: controller.signal
+      });
 
-    return {
-      healthy: response.ok,
-      status: response.status,
-      statusText: response.statusText,
-      deploymentStatus,
-      error: response.ok ? undefined :
-             response.status === 404 ? 'Domain not deployed yet' :
-             `HTTP ${response.status}: ${response.statusText}`,
-      timestamp: new Date().toISOString()
-    }
-  } catch (error) {
-    console.error(`Service health check failed for ${domain}:`, error)
-    return {
-      healthy: false,
-      status: 0,
-      statusText: 'Connection Failed',
-      deploymentStatus: 'connection-failed',
-      error: error instanceof Error ? error.message : 'Connection failed',
-      timestamp: new Date().toISOString()
+      clearTimeout(timeoutId);
+
+      const deploymentStatus = response.status === 404 ? 'not-deployed' :
+                             response.ok ? 'deployed-healthy' : 'deployed-unhealthy';
+
+      // Additional diagnostic info
+      const diagnostics = {
+        url: targetUrl,
+        attempt: attempt + 1,
+        timeout,
+        timestamp: new Date().toISOString()
+      };
+
+      return {
+        healthy: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        deploymentStatus,
+        error: response.ok ? undefined :
+               response.status === 404 ? 'Domain not deployed yet' :
+               `HTTP ${response.status}: ${response.statusText}`,
+        timestamp: diagnostics.timestamp,
+        diagnostics: !response.ok ? diagnostics : undefined
+      };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`Service health check attempt ${attempt + 1} failed for ${domain}:`, error);
+      
+      if (attempt < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        continue;
+      }
     }
   }
+
+  return {
+    healthy: false,
+    status: 0,
+    statusText: 'Connection Failed',
+    deploymentStatus: 'connection-failed',
+    error: lastError?.message || 'Connection failed after retries',
+    timestamp: new Date().toISOString(),
+    diagnostics: {
+      url: `https://${domain}`,
+      attempt: MAX_RETRIES + 1,
+      finalError: lastError?.message
+    }
+  };
 }
 
 /**

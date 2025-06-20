@@ -1,9 +1,11 @@
+/// <reference lib="deno.ns" />
+
 /**
  * UBQ.FI Health Monitor - Deno Deploy Entry Point
  * Standalone health monitoring application
  */
 
-import { handleGetServices } from './api/services.ts'
+import { handleGetServices, handleGetServiceHealth } from './api/services.ts'
 import { handleGetCache } from './api/cache.ts'
 import { handleUpdateHealth } from './api/update.ts'
 import { handleProxyStatus, handleProxyManifest } from './api/proxy.ts'
@@ -44,6 +46,9 @@ async function handleRequest(request: Request): Promise<Response> {
     } else if (path === '/' || path === '/index.html') {
       // Health dashboard
       return await handleHealthDashboard()
+    } else if (path.startsWith('/api/health/')) {
+      const domain = path.replace('/api/health/', '')
+      return await handleGetServiceHealth(domain)
     } else if (path === '/health-checker.js') {
       // Health dashboard JavaScript
       return await handleHealthDashboard(path)
@@ -90,7 +95,7 @@ async function handleHealthDashboard(path: string = '/'): Promise<Response> {
 export default { fetch: handleRequest }
 
 // For local development
-if (import.meta.main) {
+if (Deno.args.includes('--dev')) {
   Deno.serve({ port: 8000 }, handleRequest)
   console.log('🩺 UBQ.FI Health Monitor started on http://localhost:8000')
 }

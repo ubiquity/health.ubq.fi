@@ -53,6 +53,12 @@ export interface ProxyStatusResponse {
   deploymentStatus: string
   error?: string
   timestamp: string
+  diagnostics?: {
+    url: string
+    attempt?: number
+    timeout?: number
+    finalError?: string
+  }
 }
 
 export interface ProxyManifestResponse {

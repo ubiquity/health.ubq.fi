@@ -19,6 +19,22 @@ This document outlines the technologies used, development setup, technical const
 - KV storage requires Deno Deploy for persistence
 - Dashboard must remain lightweight (no frameworks)
 
+## API Endpoints
+
+### Health Monitoring
+- `GET /api/services` - List all services and plugins
+  - Returns: `ServicesListResponse`
+- `GET /api/health/{domain}` - Check health of specific service/plugin
+  - Returns: `ProxyStatusResponse`
+- `GET /health/cache` - Get cached health data
+  - Returns: `CachedHealthData`
+- `POST /health/update` - Update health status (internal use)
+  - Body: `UpdateHealthRequest`
+
+### Legacy Support
+- `GET /json` - Legacy health endpoint
+  - Returns: `LegacyHealthResponse`
+
 ## Dependencies
 - **External Services**: None (self-contained)
 - **Third-party APIs**: Health check endpoints of Ubiquity services
