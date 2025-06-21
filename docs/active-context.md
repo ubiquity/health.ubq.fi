@@ -15,6 +15,7 @@ This document tracks the current work focus, recent changes, next steps, and act
 - Optimized the deploy script by removing redundant runtimes (Node.js, Bun).
 - Pinned the Deno version in the deploy script to `1.44.0` for consistency.
 - Added `deno lint` and `deno test` as quality gates to the deploy workflow.
+- Implemented 'Automatic Workspace Folders' feature.
 
 ## Next Steps
 - Monitor application for any new issues.

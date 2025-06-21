@@ -2,3 +2,4 @@ node_modules
 .env
 .DS_Store
 server.pid
+src/client/.well-known/appspecific/com.chrome.devtools.json

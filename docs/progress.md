@@ -13,6 +13,7 @@ This document tracks what works, what's left to build, current status, and known
 - KV storage operations (`storage/kv.ts`)
 - Health checker utility (`utils/health-checker.ts`)
 - Dashboard HTML structure (`dashboard/index.html`)
+- Automatic Workspace Folders feature.
 
 ## What's Left
 - Implement caching mechanism

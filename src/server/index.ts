@@ -5,7 +5,7 @@
  * Standalone health monitoring application
  */
 
-import { serveDir } from "https://deno.land/std@0.224.0/http/file_server.ts";
+import { serveDir, serveFile } from "https://deno.land/std@0.224.0/http/file_server.ts";
 import { handleGetApps, handleGetAppHealth } from "./api/apps.ts";
 import { handleGetCache } from "./api/cache.ts";
 import { handleUpdateHealth } from "./api/update.ts";
@@ -47,6 +47,8 @@ async function serve(request: Request): Promise<Response> {
     } else if (path.startsWith("/api/health/")) {
       const domain = path.replace("/api/health/", "");
       return await handleGetAppHealth(domain);
+    } else if (path === "/.well-known/appspecific/com.chrome.devtools.json") {
+      return serveFile(request, "src/client/.well-known/appspecific/com.chrome.devtools.json");
     }
 
     return serveDir(request, {
