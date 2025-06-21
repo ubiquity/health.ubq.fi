@@ -43,6 +43,7 @@ export interface ServicesListResponse {
     displayName?: string
     description?: string
   }[]
+  others: string[]
   timestamp: string
 }
 

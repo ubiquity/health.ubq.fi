@@ -11,10 +11,16 @@ export async function checkServiceHealth(domain: string): Promise<ProxyStatusRes
   const MAX_RETRIES = 2;
   const INITIAL_TIMEOUT = 5000; // 5s
   let lastError: Error | undefined;
-  
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const targetUrl = `https://${domain}`;
+      let targetDomain = domain
+      if (domain === 'root') {
+        targetDomain = 'ubq.fi'
+      } else if (!domain.includes('.')) {
+        targetDomain = `${domain}.ubq.fi`
+      }
+      const targetUrl = `https://${targetDomain}`
       const timeout = INITIAL_TIMEOUT * (attempt + 1);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -51,7 +57,7 @@ export async function checkServiceHealth(domain: string): Promise<ProxyStatusRes
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       console.error(`Service health check attempt ${attempt + 1} failed for ${domain}:`, error);
-      
+
       if (attempt < MAX_RETRIES) {
         await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;

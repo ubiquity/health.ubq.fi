@@ -11,8 +11,8 @@ This document outlines the technologies used, development setup, technical const
 ## Development Setup
 1. Install Deno: `brew install deno`
 2. Clone repository: `git clone https://github.com/ubiquity/health.ubq.fi`
-3. Run development server: `bun run main.ts`
-4. Access dashboard at `http://localhost:8000/dashboard`
+3. Run development server: `deno task dev`
+4. Access dashboard at `http://localhost:8000`
 
 ## Constraints
 - Requires Deno runtime (v1.30+)

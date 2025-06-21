@@ -30,7 +30,7 @@ async function handleRequest(request: Request): Promise<Response> {
 
   try {
     // Health API endpoints
-    if (path === '/health/services') {
+    if (path === '/api/services') {
       return await handleGetServices()
     } else if (path === '/health/cache') {
       return await handleGetCache()
@@ -94,8 +94,4 @@ async function handleHealthDashboard(path: string = '/'): Promise<Response> {
 // Export the handler as default for Deno Deploy
 export default { fetch: handleRequest }
 
-// For local development
-if (Deno.args.includes('--dev')) {
-  Deno.serve({ port: 8000 }, handleRequest)
-  console.log('🩺 UBQ.FI Health Monitor started on http://localhost:8000')
-}
+// For local development, Deno.serve is now implicitly called by the task runner

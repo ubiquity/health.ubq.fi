@@ -127,9 +127,22 @@
             margin-bottom: 0.75rem;
         }
 
-        .card-title {
-            font-weight: 600;
+        .card-title a {
             color: #f8fafc;
+            text-decoration: none;
+        }
+
+        .card-title a:hover {
+            text-decoration: underline;
+        }
+
+        .card-domain a {
+            color: #94a3b8;
+            text-decoration: none;
+        }
+
+        .card-domain a:hover {
+            text-decoration: underline;
         }
 
         .status-indicator {
@@ -245,6 +258,11 @@
                     <div class="label">Healthy Plugins</div>
                 </div>
                 <div class="summary-card">
+                    <h3>Other</h3>
+                    <div class="value" id="others-count">0/0</div>
+                    <div class="label">Healthy Other</div>
+                </div>
+                <div class="summary-card">
                     <h3>Last Updated</h3>
                     <div class="value" id="last-updated" style="font-size: 1rem;">Never</div>
                     <div class="label">Refresh Time</div>
@@ -259,6 +277,11 @@
             <div class="section">
                 <h2>Plugins Status</h2>
                 <div class="grid" id="plugins-grid"></div>
+            </div>
+
+            <div class="section">
+                <h2>Other Status</h2>
+                <div class="grid" id="others-grid"></div>
             </div>
 
             <div class="last-updated">
