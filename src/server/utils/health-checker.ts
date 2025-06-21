@@ -8,27 +8,34 @@ import type { ProxyStatusResponse, ProxyManifestResponse } from '../storage/type
  * Check app health status
  */
 export async function checkAppHealth(domain: string): Promise<ProxyStatusResponse> {
+  const SPECIAL_DOMAINS = ["xp.ubq.fi", "partner.ubq.fi"];
   const MAX_RETRIES = 2;
   const INITIAL_TIMEOUT = 5000; // 5s
   let lastError: Error | undefined;
-  let targetUrl = '';
+  let targetUrl = "";
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      let targetDomain = domain
-      if (domain === 'root') {
-        targetDomain = 'ubq.fi'
-      } else if (!domain.includes('.')) {
-        targetDomain = `${domain}.ubq.fi`
+      let targetDomain = domain;
+      if (domain === "root") {
+        targetDomain = "ubq.fi";
+      } else if (!domain.includes(".")) {
+        targetDomain = `${domain}.ubq.fi`;
       }
-      targetUrl = domain === 'root' ? `https://${targetDomain}` : `https://${targetDomain}/manifest.json`
+
+      const isSpecialDomain = SPECIAL_DOMAINS.includes(targetDomain);
+      if (isSpecialDomain) {
+        targetUrl = `https://${targetDomain}/`;
+      } else {
+        targetUrl = `https://${targetDomain}/manifest.json`;
+      }
       const timeout = INITIAL_TIMEOUT * (attempt + 1);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
       const response = await fetch(targetUrl, {
-        method: 'HEAD',
-        signal: controller.signal
+        method: "HEAD",
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);

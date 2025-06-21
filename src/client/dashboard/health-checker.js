@@ -70,64 +70,78 @@ function renderCard(grid, item, health, isPlugin = false) {
 }
 
 async function updateDashboard() {
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('content').style.display = 'none';
-  document.getElementById('error').style.display = 'none';
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("content").style.display = "none";
+  document.getElementById("error").style.display = "none";
 
-  const appsGrid = document.getElementById('apps-grid');
-  const pluginsGrid = document.getElementById('plugins-grid');
-  const othersGrid = document.getElementById('others-grid');
-  appsGrid.innerHTML = '';
-  pluginsGrid.innerHTML = '';
-  othersGrid.innerHTML = '';
+  const appsGrid = document.getElementById("apps-grid");
+  const pluginsGrid = document.getElementById("plugins-grid");
+  appsGrid.innerHTML = "";
+  pluginsGrid.innerHTML = "";
 
   const data = await fetchHealthData();
   if (!data) {
-    document.getElementById('loading').style.display = 'none';
+    document.getElementById("loading").style.display = "none";
     return;
   }
 
-  // Hide main loader and show content area. Tiles will appear as they load.
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('content').style.display = 'block';
-  document.getElementById('last-updated').textContent = new Date(data.timestamp).toLocaleString();
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("content").style.display = "block";
+  document.getElementById(
+    "last-updated"
+  ).textContent = new Date().toLocaleString();
 
   const { apps = [], plugins = [] } = data;
-  const pluginNames = new Set(plugins.map(p => p.name));
-  const appsToHealthCheck = apps.filter(app => !pluginNames.has(app));
 
-  const totalAppsCount = appsToHealthCheck.filter(app => !app.startsWith('os-')).length;
-  const totalPluginsCount = plugins.length;
-  const totalOthersCount = appsToHealthCheck.filter(app => app.startsWith('os-')).length;
+  // Process all os-prefixed domains as plugins
+  const osPlugins = apps
+    .filter((app) => app.startsWith("os-"))
+    .map((name) => ({
+      name,
+      displayName: name.replace(/^os-/, "").replace(/-/g, " "),
+      routingDomain: `${name}.ubq.fi`,
+      description: "Operating System Plugin",
+    }));
+
+  const allPlugins = [...plugins, ...osPlugins];
+  const pluginNames = new Set(allPlugins.map((p) => p.name));
+  const regularApps = apps.filter((app) => !pluginNames.has(app));
+
+  const totalAppsCount = regularApps.length;
+  const totalPluginsCount = allPlugins.length;
 
   const updateAllCounts = () => {
-    const healthyApps = document.querySelectorAll('#apps-grid .status-healthy').length;
-    const healthyPlugins = document.querySelectorAll('#plugins-grid .status-healthy').length;
-    const healthyOthers = document.querySelectorAll('#others-grid .status-healthy').length;
-
-    const totalHealthy = healthyApps + healthyPlugins + healthyOthers;
-    const totalServices = totalAppsCount + totalPluginsCount + totalOthersCount;
-
-    document.getElementById('apps-count').textContent = `${healthyApps}/${totalAppsCount}`;
-    document.getElementById('plugins-count').textContent = `${healthyPlugins}/${totalPluginsCount}`;
-    document.getElementById('others-count').textContent = `${healthyOthers}/${totalOthersCount}`;
-    document.getElementById('overall-health').textContent =
-      `${totalServices > 0 ? Math.round((totalHealthy / totalServices) * 100) : 0}%`;
+    const healthyApps = document.querySelectorAll(
+      "#apps-grid .status-healthy"
+    ).length;
+    const healthyPlugins = document.querySelectorAll(
+      "#plugins-grid .status-healthy"
+    ).length;
+    const totalHealthy = healthyApps + healthyPlugins;
+    const totalServices = totalAppsCount + totalPluginsCount;
+    document.getElementById(
+      "apps-count"
+    ).textContent = `${healthyApps}/${totalAppsCount}`;
+    document.getElementById(
+      "plugins-count"
+    ).textContent = `${healthyPlugins}/${totalPluginsCount}`;
+    document.getElementById("overall-health").textContent = `${totalServices > 0
+        ? Math.round((totalHealthy / totalServices) * 100)
+        : 0
+      }%`;
   };
 
-  // Initialize counts
   updateAllCounts();
 
-  appsToHealthCheck.forEach(app => {
-    checkAppHealth(app).then(health => {
-      const targetGrid = app.startsWith('os-') ? othersGrid : appsGrid;
-      renderCard(targetGrid, app, health);
+  regularApps.forEach((app) => {
+    checkAppHealth(app).then((health) => {
+      renderCard(appsGrid, app, health);
       updateAllCounts();
     });
   });
 
-  plugins.forEach(plugin => {
-    checkAppHealth(plugin.routingDomain).then(health => {
+  allPlugins.forEach((plugin) => {
+    checkAppHealth(plugin.routingDomain).then((health) => {
       renderCard(pluginsGrid, plugin, health, true);
       updateAllCounts();
     });

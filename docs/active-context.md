@@ -7,6 +7,8 @@ This document tracks the current work focus, recent changes, next steps, and act
 - Improving error handling and service resilience
 
 ## Recent Changes
+- Fixed `TypeError` in `health-checker.js` by adding a null check before accessing element styles.
+- Refactored CSS from inline styles in `index.html` to an external stylesheet `style.css`.
 - Fixed `Invalid URL` error in `router-api.ts` by adding URL validation.
 - Corrected `dns error` in `health-checker.ts` by properly constructing service URLs.
 - Handled `plugins is not iterable` error in `health-checker.js` by adding fallbacks for empty plugin/service arrays.
@@ -16,4 +18,3 @@ This document tracks the current work focus, recent changes, next steps, and act
 
 ## Next Steps
 - Monitor application for any new issues.
-- Update `progress.md` to reflect resolved issues.

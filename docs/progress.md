@@ -22,6 +22,5 @@ This document tracks what works, what's left to build, current status, and known
 - Write comprehensive tests
 
 ## Known Issues
-- Dashboard doesn't auto-refresh status
 - KV storage not persisted between restarts
 - Limited API documentation
