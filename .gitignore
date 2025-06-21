@@ -3,3 +3,4 @@ node_modules
 .DS_Store
 server.pid
 src/client/.well-known/appspecific/com.chrome.devtools.json
+.uuid

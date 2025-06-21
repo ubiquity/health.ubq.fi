@@ -16,6 +16,7 @@ This document tracks the current work focus, recent changes, next steps, and act
 - Pinned the Deno version in the deploy script to `1.44.0` for consistency.
 - Added `deno lint` and `deno test` as quality gates to the deploy workflow.
 - Implemented 'Automatic Workspace Folders' feature.
+- Automated devtools JSON generation.
 
 ## Next Steps
 - Monitor application for any new issues.

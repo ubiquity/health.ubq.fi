@@ -11,6 +11,7 @@ import { handleGetCache } from "./api/cache.ts";
 import { handleUpdateHealth } from "./api/update.ts";
 import { handleProxyStatus, handleProxyManifest } from "./api/proxy.ts";
 import { handleLegacyHealthApi } from "./api/legacy.ts";
+import { generateDevtoolsJson } from "./utils/generate-devtools-json.ts";
 
 async function serve(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -76,3 +77,6 @@ async function serve(request: Request): Promise<Response> {
 export default { fetch: serve };
 
 // For local development, Deno.serve is now implicitly called by the task runner
+if (import.meta.main) {
+  await generateDevtoolsJson();
+}
