@@ -10,6 +10,9 @@ This document tracks the current work focus, recent changes, next steps, and act
 - Fixed `Invalid URL` error in `router-api.ts` by adding URL validation.
 - Corrected `dns error` in `health-checker.ts` by properly constructing service URLs.
 - Handled `plugins is not iterable` error in `health-checker.js` by adding fallbacks for empty plugin/service arrays.
+- Optimized the deploy script by removing redundant runtimes (Node.js, Bun).
+- Pinned the Deno version in the deploy script to `1.44.0` for consistency.
+- Added `deno lint` and `deno test` as quality gates to the deploy workflow.
 
 ## Next Steps
 - Monitor application for any new issues.
