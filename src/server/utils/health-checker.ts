@@ -1,16 +1,17 @@
 /**
- * Health checking utilities for services and plugins
+ * Health checking utilities for apps and plugins
  */
 
 import type { ProxyStatusResponse, ProxyManifestResponse } from '../storage/types.ts'
 
 /**
- * Check service health status
+ * Check app health status
  */
-export async function checkServiceHealth(domain: string): Promise<ProxyStatusResponse> {
+export async function checkAppHealth(domain: string): Promise<ProxyStatusResponse> {
   const MAX_RETRIES = 2;
   const INITIAL_TIMEOUT = 5000; // 5s
   let lastError: Error | undefined;
+  let targetUrl = '';
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -20,7 +21,7 @@ export async function checkServiceHealth(domain: string): Promise<ProxyStatusRes
       } else if (!domain.includes('.')) {
         targetDomain = `${domain}.ubq.fi`
       }
-      const targetUrl = `https://${targetDomain}`
+      targetUrl = domain === 'root' ? `https://${targetDomain}` : `https://${targetDomain}/manifest.json`
       const timeout = INITIAL_TIMEOUT * (attempt + 1);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -56,7 +57,7 @@ export async function checkServiceHealth(domain: string): Promise<ProxyStatusRes
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`Service health check attempt ${attempt + 1} failed for ${domain}:`, error);
+      console.error(`App health check attempt ${attempt + 1} failed for ${domain}:`, error);
 
       if (attempt < MAX_RETRIES) {
         await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
@@ -73,7 +74,7 @@ export async function checkServiceHealth(domain: string): Promise<ProxyStatusRes
     error: lastError?.message || 'Connection failed after retries',
     timestamp: new Date().toISOString(),
     diagnostics: {
-      url: `https://${domain}`,
+      url: targetUrl || `https://${domain}`,
       attempt: MAX_RETRIES + 1,
       finalError: lastError?.message
     }

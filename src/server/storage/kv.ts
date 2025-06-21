@@ -6,7 +6,7 @@ import type { CachedHealthData, UpdateHealthRequest } from './types.ts'
 
 // In-memory storage for health data
 let healthCache: CachedHealthData = {
-  services: {},
+  apps: {},
   plugins: {},
   lastGlobalUpdate: new Date().toISOString()
 }
@@ -55,7 +55,7 @@ export async function getCachedHealthData(): Promise<CachedHealthData> {
 }
 
 /**
- * Update health data for a specific service or plugin
+ * Update health data for a specific app or plugin
  */
 export async function updateHealthData(request: UpdateHealthRequest): Promise<{
   success: boolean
@@ -65,8 +65,8 @@ export async function updateHealthData(request: UpdateHealthRequest): Promise<{
 }> {
   try {
     // Update the appropriate entry
-    if (request.type === 'service') {
-      healthCache.services[request.key] = request.result as any
+    if (request.type === 'app') {
+      healthCache.apps[request.key] = request.result as any
     } else {
       healthCache.plugins[request.key] = request.result as any
     }
@@ -100,7 +100,7 @@ export async function updateHealthData(request: UpdateHealthRequest): Promise<{
  */
 export async function clearHealthData(): Promise<void> {
   healthCache = {
-    services: {},
+    apps: {},
     plugins: {},
     lastGlobalUpdate: new Date().toISOString()
   }
@@ -117,13 +117,13 @@ export async function clearHealthData(): Promise<void> {
  * Get storage statistics
  */
 export async function getStorageStats(): Promise<{
-  serviceCount: number
+  appCount: number
   pluginCount: number
   lastUpdate: string
   storage: string
 }> {
   return {
-    serviceCount: Object.keys(healthCache.services).length,
+    appCount: Object.keys(healthCache.apps).length,
     pluginCount: Object.keys(healthCache.plugins).length,
     lastUpdate: healthCache.lastGlobalUpdate,
     storage: 'local-memory'

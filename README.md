@@ -1,10 +1,10 @@
 # UBQ.FI Health Monitor
 
-A standalone Deno Deploy application for monitoring the health of all UBQ.FI services and plugins.
+A standalone Deno Deploy application for monitoring the health of all UBQ.FI apps and plugins.
 
 ## Features
 
-- **Real-time Health Monitoring**: Tracks status of all UBQ.FI services and plugins
+- **Real-time Health Monitoring**: Tracks status of all UBQ.FI apps and plugins
 - **Deno KV Storage**: Uses Deno's built-in KV store for persistent health data
 - **Rate Limiting**: Built-in rate limiting to prevent excessive API calls
 - **Fallback Mode**: Automatic fallback to localStorage when KV limits are hit
@@ -25,10 +25,10 @@ health-app/
 
 ## API Endpoints
 
-- `GET /health/services` - List all services and plugins
+- `GET /health/apps` - List all apps and plugins
 - `GET /health/cache` - Get cached health data
 - `POST /health/update` - Update health status
-- `GET /health/proxy/status?domain=X` - Check service health
+- `GET /health/proxy/status?domain=X` - Check app health
 - `GET /health/proxy/manifest?domain=X` - Check plugin manifest
 - `GET /json` - Legacy API endpoint
 - `GET /` - Health dashboard
@@ -81,7 +81,7 @@ You can also deploy manually to Deno Deploy:
 
 ## Environment Variables
 
-No environment variables are required - the app fetches services list from the main ubq.fi router sitemap and plugin-map endpoints.
+No environment variables are required - the app fetches apps list from the main ubq.fi router sitemap and plugin-map endpoints.
 
 ## KV Storage Structure
 
@@ -89,7 +89,7 @@ The app uses Deno KV with the following structure:
 
 ```
 ['health', 'cache'] -> CachedHealthData {
-  services: { [key: string]: ServiceHealth }
+  apps: { [key: string]: AppHealth }
   plugins: { [key: string]: PluginHealth }
   lastGlobalUpdate: string
 }
@@ -97,7 +97,7 @@ The app uses Deno KV with the following structure:
 
 ## Rate Limiting
 
-- Health checks are rate limited to once every 5 minutes per service/plugin
+- Health checks are rate limited to once every 5 minutes per app/plugin
 - Updates to KV storage include rate limiting to prevent abuse
 - Automatic fallback to localStorage when KV limits are exceeded
 
@@ -114,8 +114,8 @@ The app uses Deno KV with the following structure:
 The dashboard provides real-time monitoring with:
 
 - Overall system health percentage
-- Service and plugin status counts
+- App and plugin status counts
 - Last update timestamps
-- Individual service/plugin details
+- Individual app/plugin details
 - Error reporting
 - Automatic refresh every 5 minutes

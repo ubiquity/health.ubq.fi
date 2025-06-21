@@ -108,7 +108,7 @@
             gap: 1rem;
         }
 
-        .service-card, .plugin-card {
+        .app-card, .plugin-card {
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 0.5rem;
@@ -116,13 +116,13 @@
             transition: all 0.2s;
         }
 
-        .service-card:hover, .plugin-card:hover {
+        .app-card:hover, .plugin-card:hover {
             border-color: #475569;
         }
 
         .card-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 0.75rem;
         }
@@ -231,7 +231,7 @@
     <div class="container">
         <div class="header">
             <h1>UBQ.FI Health Dashboard</h1>
-            <p>Real-time status monitoring for all UBQ.FI services and plugins</p>
+            <p>Real-time status monitoring for all Ubiquity DAO apps and plugins</p>
         </div>
 
         <div id="loading" class="loading">
@@ -248,9 +248,9 @@
                     <div class="label">System Health</div>
                 </div>
                 <div class="summary-card">
-                    <h3>Services</h3>
-                    <div class="value" id="services-count">0/0</div>
-                    <div class="label">Healthy Services</div>
+                    <h3>Apps</h3>
+                    <div class="value" id="apps-count">0/0</div>
+                    <div class="label">Healthy Apps</div>
                 </div>
                 <div class="summary-card">
                     <h3>Plugins</h3>
@@ -270,8 +270,8 @@
             </div>
 
             <div class="section">
-                <h2>Services Status</h2>
-                <div class="grid" id="services-grid"></div>
+                <h2>Apps Status</h2>
+                <div class="grid" id="apps-grid"></div>
             </div>
 
             <div class="section">

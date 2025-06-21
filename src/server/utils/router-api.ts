@@ -1,13 +1,13 @@
 /**
- * Dynamic services and plugins fetcher from live endpoints
+ * Dynamic apps and plugins fetcher from live endpoints
  */
 
-import type { ServicesListResponse } from '../storage/types.ts'
+import type { AppsListResponse } from '../storage/types.ts'
 
 // Cache configuration
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 let cache: {
-  data: ServicesListResponse | null
+  data: AppsListResponse | null
   timestamp: number
 } = {
   data: null,
@@ -42,9 +42,9 @@ function extractSubdomain(url: string): string {
 }
 
 /**
- * Fetch and parse services from sitemap.json
+ * Fetch and parse apps from sitemap.json
  */
-async function fetchServices(): Promise<string[]> {
+async function fetchApps(): Promise<string[]> {
   try {
     const response = await fetch('https://ubq.fi/sitemap.json', {
       signal: AbortSignal.timeout(10000) // 10 second timeout
@@ -55,21 +55,21 @@ async function fetchServices(): Promise<string[]> {
     }
 
     const data = await response.json();
-    const services = new Set<string>();
+    const apps = new Set<string>();
 
     if (data.urls && Array.isArray(data.urls)) {
       for (const item of data.urls) {
         const subdomain = extractSubdomain(item.url);
         if (subdomain !== null) {
-          services.add(subdomain);
+          apps.add(subdomain);
         }
       }
     }
 
-    return Array.from(services).sort();
+    return Array.from(apps).sort();
 
   } catch (error) {
-    console.error('Error fetching services from sitemap:', error);
+    console.error('Error fetching apps from sitemap:', error);
     return []; // Return empty array on error
   }
 }
@@ -77,7 +77,7 @@ async function fetchServices(): Promise<string[]> {
 /**
  * Fetch and parse plugins from plugin-map.json
  */
-async function fetchPlugins(): Promise<ServicesListResponse['plugins']> {
+async function fetchPlugins(): Promise<AppsListResponse['plugins']> {
   try {
     const response = await fetch('https://ubq.fi/plugin-map.json', {
       signal: AbortSignal.timeout(10000) // 10 second timeout
@@ -88,7 +88,7 @@ async function fetchPlugins(): Promise<ServicesListResponse['plugins']> {
     }
 
     const data = await response.json();
-    const plugins: ServicesListResponse['plugins'] = [];
+    const plugins: AppsListResponse['plugins'] = [];
 
     if (data.plugins && Array.isArray(data.plugins)) {
       for (const plugin of data.plugins) {
@@ -111,9 +111,9 @@ async function fetchPlugins(): Promise<ServicesListResponse['plugins']> {
 }
 
 /**
- * Get services and plugins dynamically with caching
+ * Get apps and plugins dynamically with caching
  */
-export async function getServicesFromRouter(): Promise<ServicesListResponse> {
+export async function getAppsFromRouter(): Promise<AppsListResponse> {
   // Check cache validity
   const now = Date.now()
   if (cache.data && (now - cache.timestamp) < CACHE_DURATION) {
@@ -121,13 +121,13 @@ export async function getServicesFromRouter(): Promise<ServicesListResponse> {
   }
 
   // Fetch fresh data
-  const [services, plugins] = await Promise.all([
-    fetchServices(),
+  const [apps, plugins] = await Promise.all([
+    fetchApps(),
     fetchPlugins()
   ])
 
-  const response: ServicesListResponse = {
-    services,
+  const response: AppsListResponse = {
+    apps,
     plugins,
     others: [],
     timestamp: new Date().toISOString()

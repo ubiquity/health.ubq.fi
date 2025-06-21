@@ -1,16 +1,16 @@
 /**
- * Services list endpoint
+ * Apps list endpoint
  */
 
-import { getServicesFromRouter } from '../utils/router-api.ts'
+import { getAppsFromRouter } from '../utils/router-api.ts'
 
-import { checkServiceHealth } from '../utils/health-checker.ts'
+import { checkAppHealth } from '../utils/health-checker.ts'
 
-export async function handleGetServices(): Promise<Response> {
+export async function handleGetApps(): Promise<Response> {
   try {
-    const services = await getServicesFromRouter()
+    const apps = await getAppsFromRouter()
 
-    return new Response(JSON.stringify(services), {
+    return new Response(JSON.stringify(apps), {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'public, max-age=300',
@@ -18,9 +18,9 @@ export async function handleGetServices(): Promise<Response> {
       }
     })
   } catch (error) {
-    console.error('Error getting services list:', error)
+    console.error('Error getting apps list:', error)
     return new Response(JSON.stringify({
-      error: 'Failed to get services list',
+      error: 'Failed to get apps list',
       message: error instanceof Error ? error.message : 'Unknown error'
     }), {
       status: 500,
@@ -32,9 +32,9 @@ export async function handleGetServices(): Promise<Response> {
   }
 }
 
-export async function handleGetServiceHealth(domain: string): Promise<Response> {
+export async function handleGetAppHealth(domain: string): Promise<Response> {
   try {
-    const health = await checkServiceHealth(domain)
+    const health = await checkAppHealth(domain)
 
     return new Response(JSON.stringify(health), {
       headers: {
@@ -46,7 +46,7 @@ export async function handleGetServiceHealth(domain: string): Promise<Response> 
   } catch (error) {
     console.error(`Error checking health for ${domain}:`, error)
     return new Response(JSON.stringify({
-      error: 'Failed to check service health',
+      error: 'Failed to check app health',
       message: error instanceof Error ? error.message : 'Unknown error'
     }), {
       status: 500,

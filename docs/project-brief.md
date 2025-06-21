@@ -3,7 +3,7 @@
 This document outlines the core requirements and goals of the health.ubq.fi project.
 
 ## Key Objectives
-- Create a health monitoring dashboard for Ubiquity services
+- Create a health monitoring dashboard for Ubiquity apps
 - Provide API endpoints for health check statuses
 - Implement caching mechanism for performance optimization
 - Offer legacy API support for backward compatibility

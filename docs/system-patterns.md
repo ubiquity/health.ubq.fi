@@ -12,14 +12,14 @@ This document describes the system architecture, key technical decisions, design
 ## Design Patterns
 1. **Proxy Pattern**: Used in `api/proxy.ts` to forward requests
 2. **Singleton Pattern**: KV storage instance in `storage/kv.ts`
-3. **Facade Pattern**: Simplified API in `api/services.ts`
+3. **Facade Pattern**: Simplified API in `api/apps.ts`
 
 ## Component Relationships
 ```mermaid
 flowchart TD
     Dashboard --> API
-    API --> Services
-    Services --> Storage[KV Storage]
-    Services --> Legacy[Legacy API]
+    API --> Apps
+    Apps --> Storage[KV Storage]
+    Apps --> Legacy[Legacy API]
     Utils --> API
     Utils --> Dashboard

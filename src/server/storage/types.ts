@@ -10,10 +10,10 @@ export interface HealthCheckResult {
   checkedBy?: string
 }
 
-export interface ServiceHealth extends HealthCheckResult {
+export interface AppHealth extends HealthCheckResult {
   name: string
   domain: string
-  serviceType?: string
+  appType?: string
   denoExists?: boolean
   pagesExists?: boolean
 }
@@ -28,13 +28,13 @@ export interface PluginHealth extends HealthCheckResult {
 }
 
 export interface CachedHealthData {
-  services: { [key: string]: ServiceHealth }
+  apps: { [key: string]: AppHealth }
   plugins: { [key: string]: PluginHealth }
   lastGlobalUpdate: string
 }
 
-export interface ServicesListResponse {
-  services: string[]
+export interface AppsListResponse {
+  apps: string[]
   plugins: {
     name: string
     variants: string[]
@@ -72,18 +72,18 @@ export interface ProxyManifestResponse {
 }
 
 export interface UpdateHealthRequest {
-  type: 'service' | 'plugin'
+  type: 'app' | 'plugin'
   key: string
   result: HealthCheckResult
 }
 
 export interface LegacyHealthResponse {
   lastUpdated: string
-  services: ServiceHealth[]
+  apps: AppHealth[]
   plugins: PluginHealth[]
   summary: {
-    totalServices: number
-    healthyServices: number
+    totalApps: number
+    healthyApps: number
     totalPlugins: number
     healthyPlugins: number
     overallHealthPercentage: number

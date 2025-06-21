@@ -22,9 +22,9 @@ This document outlines the technologies used, development setup, technical const
 ## API Endpoints
 
 ### Health Monitoring
-- `GET /api/services` - List all services and plugins
-  - Returns: `ServicesListResponse`
-- `GET /api/health/{domain}` - Check health of specific service/plugin
+- `GET /api/apps` - List all apps and plugins
+  - Returns: `AppsListResponse`
+- `GET /api/health/{domain}` - Check health of specific app/plugin
   - Returns: `ProxyStatusResponse`
 - `GET /health/cache` - Get cached health data
   - Returns: `CachedHealthData`
@@ -37,5 +37,5 @@ This document outlines the technologies used, development setup, technical const
 
 ## Dependencies
 - **External Services**: None (self-contained)
-- **Third-party APIs**: Health check endpoints of Ubiquity services
+- **Third-party APIs**: Health check endpoints of Ubiquity apps
 - **Key Integrations**: Deno KV, Fetch API

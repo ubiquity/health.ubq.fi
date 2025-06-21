@@ -5,7 +5,7 @@
  * Standalone health monitoring application
  */
 
-import { handleGetServices, handleGetServiceHealth } from './api/services.ts'
+import { handleGetApps, handleGetAppHealth } from './api/apps.ts'
 import { handleGetCache } from './api/cache.ts'
 import { handleUpdateHealth } from './api/update.ts'
 import { handleProxyStatus, handleProxyManifest } from './api/proxy.ts'
@@ -30,8 +30,8 @@ async function handleRequest(request: Request): Promise<Response> {
 
   try {
     // Health API endpoints
-    if (path === '/api/services') {
-      return await handleGetServices()
+    if (path === '/api/apps') {
+      return await handleGetApps()
     } else if (path === '/health/cache') {
       return await handleGetCache()
     } else if (path === '/health/update') {
@@ -48,7 +48,7 @@ async function handleRequest(request: Request): Promise<Response> {
       return await handleHealthDashboard()
     } else if (path.startsWith('/api/health/')) {
       const domain = path.replace('/api/health/', '')
-      return await handleGetServiceHealth(domain)
+      return await handleGetAppHealth(domain)
     } else if (path === '/health-checker.js') {
       // Health dashboard JavaScript
       return await handleHealthDashboard(path)

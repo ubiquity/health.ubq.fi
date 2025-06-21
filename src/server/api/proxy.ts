@@ -2,7 +2,7 @@
  * Proxy API endpoints for health checking
  */
 
-import { checkServiceHealth, checkPluginManifest } from '../utils/health-checker.ts'
+import { checkAppHealth, checkPluginManifest } from '../utils/health-checker.ts'
 
 export async function handleProxyStatus(url: URL): Promise<Response> {
   const domain = url.searchParams.get('domain')
@@ -17,7 +17,7 @@ export async function handleProxyStatus(url: URL): Promise<Response> {
   }
 
   try {
-    const result = await checkServiceHealth(domain)
+    const result = await checkAppHealth(domain)
 
     return new Response(JSON.stringify(result), {
       headers: {

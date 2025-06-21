@@ -4,7 +4,7 @@
 
 async function fetchHealthData() {
   try {
-    const response = await fetch('/api/services');
+    const response = await fetch('/api/apps');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -18,7 +18,7 @@ async function fetchHealthData() {
   }
 }
 
-async function checkServiceHealth(domain) {
+async function checkAppHealth(domain) {
   try {
     const response = await fetch(`/api/health/${domain || 'root'}`);
     if (!response.ok) {
@@ -35,166 +35,103 @@ async function checkServiceHealth(domain) {
   }
 }
 
-async function renderServices(services, plugins) {
-  const servicesGrid = document.getElementById('services-grid');
-  const pluginsGrid = document.getElementById('plugins-grid');
-  const othersGrid = document.getElementById('others-grid');
-  servicesGrid.innerHTML = '';
-  pluginsGrid.innerHTML = '';
-  othersGrid.innerHTML = '';
+function renderCard(grid, item, health, isPlugin = false) {
+  const card = document.createElement('div');
+  card.className = isPlugin ? 'plugin-card' : 'app-card';
 
-  const pluginNames = new Set(plugins.map(p => p.name));
+  const title = isPlugin ? item.displayName : (item ? item + '.ubq.fi' : 'ubq.fi');
+  const domain = isPlugin ? item.routingDomain : (item ? item + '.ubq.fi' : 'ubq.fi');
+  const description = isPlugin ? item.description : `Last Check: ${new Date(health.timestamp).toLocaleTimeString()}`;
+  const descriptionLabel = isPlugin ? 'Description:' : 'Last Check:';
 
-  for (const service of services) {
-    let targetGrid;
-    if (pluginNames.has(service)) {
-      continue; // Skip plugins, they are rendered separately
-    } else if (service.startsWith('os-')) {
-      targetGrid = othersGrid;
-    }
-    else {
-      targetGrid = servicesGrid;
-    }
-
-    const health = await checkServiceHealth(service);
-    const card = document.createElement('div');
-    card.className = 'service-card';
-
-    card.innerHTML = `
-      <div class="card-header">
-        <div class="card-title"><a href="https://${service ? service + '.ubq.fi' : 'ubq.fi'}" target="_blank">${service ? service + '.ubq.fi' : 'ubq.fi'}</a></div>
-        <div class="status-indicator ${health.healthy ? 'status-healthy' : 'status-unhealthy'}"></div>
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="card-title"><a href="https://${domain}" target="_blank">${title}</a></div>
+      <div class="status-indicator ${health.healthy ? 'status-healthy' : 'status-unhealthy'}"></div>
+    </div>
+    <div class="card-domain"><a href="https://${domain}" target="_blank">${domain}</a></div>
+    <div class="card-details">
+      <div class="detail-item">
+        <span class="detail-label">Status:</span>
+        <span class="detail-value">${health.healthy ? 'Healthy' : 'Unhealthy'}</span>
       </div>
-      <div class="card-domain"><a href="https://${service ? service + '.ubq.fi' : 'ubq.fi'}" target="_blank">${service ? service + '.ubq.fi' : 'ubq.fi'}</a></div>
-      <div class="card-details">
-        <div class="detail-item">
-          <span class="detail-label">Status:</span>
-          <span class="detail-value">${health.healthy ? 'Healthy' : 'Unhealthy'}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Last Check:</span>
-          <span class="detail-value">${new Date(health.timestamp).toLocaleTimeString()}</span>
-        </div>
-        ${!health.healthy ? `
-        <div class="detail-item" style="grid-column: span 2;">
-          <span class="detail-label">Error:</span>
-          <span class="detail-value">${health.error}</span>
-        </div>` : ''}
+      <div class="detail-item">
+        <span class="detail-label">${descriptionLabel}</span>
+        <span class="detail-value">${description}</span>
       </div>
-    `;
-
-    targetGrid.appendChild(card);
-  }
-}
-
-async function renderPlugins(plugins = []) {
-  const grid = document.getElementById('plugins-grid');
-  grid.innerHTML = '';
-
-  plugins.forEach(async (plugin) => {
-    const health = await checkServiceHealth(plugin.routingDomain);
-    const card = document.createElement('div');
-    card.className = 'plugin-card';
-
-    card.innerHTML = `
-      <div class="card-header">
-        <div class="card-title"><a href="https://${plugin.routingDomain}" target="_blank">${plugin.displayName}</a></div>
-        <div class="status-indicator ${health.healthy ? 'status-healthy' : 'status-unhealthy'}"></div>
-      </div>
-      <div class="card-domain"><a href="https://${plugin.routingDomain}" target="_blank">${plugin.routingDomain}</a></div>
-      <div class="card-details">
-        <div class="detail-item">
-          <span class="detail-label">Status:</span>
-          <span class="detail-value">${health.healthy ? 'Healthy' : 'Unhealthy'}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Description:</span>
-          <span class="detail-value">${plugin.description}</span>
-        </div>
-        ${!health.healthy ? `
-        <div class="detail-item" style="grid-column: span 2;">
-          <span class="detail-label">Error:</span>
-          <span class="detail-value">${health.error}</span>
-        </div>` : ''}
-      </div>
-    `;
-
-    grid.appendChild(card);
-  });
-}
-
-async function renderOthers(others = []) {
-  const grid = document.getElementById('others-grid');
-  grid.innerHTML = '';
-
-  others.forEach(async (other) => {
-    const health = await checkServiceHealth(other);
-    const card = document.createElement('div');
-    card.className = 'service-card';
-
-    card.innerHTML = `
-      <div class="card-header">
-        <div class="card-title"><a href="https://${other ? other + '.ubq.fi' : 'ubq.fi'}" target="_blank">${other ? other + '.ubq.fi' : 'ubq.fi'}</a></div>
-        <div class="status-indicator ${health.healthy ? 'status-healthy' : 'status-unhealthy'}"></div>
-      </div>
-      <div class="card-domain"><a href="https://${other ? other + '.ubq.fi' : 'ubq.fi'}" target="_blank">${other ? other + '.ubq.fi' : 'ubq.fi'}</a></div>
-      <div class="card-details">
-        <div class="detail-item">
-          <span class="detail-label">Status:</span>
-          <span class="detail-value">${health.healthy ? 'Healthy' : 'Unhealthy'}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Last Check:</span>
-          <span class="detail-value">${new Date(health.timestamp).toLocaleTimeString()}</span>
-        </div>
-        ${!health.healthy ? `
-        <div class="detail-item" style="grid-column: span 2;">
-          <span class="detail-label">Error:</span>
-          <span class="detail-value">${health.error}</span>
-        </div>` : ''}
-      </div>
-    `;
-
-    grid.appendChild(card);
-  });
+      ${!health.healthy ? `
+      <div class="detail-item" style="grid-column: span 2;">
+        <span class="detail-label">Error:</span>
+        <span class="detail-value">${health.error}</span>
+      </div>` : ''}
+    </div>
+  `;
+  grid.appendChild(card);
 }
 
 async function updateDashboard() {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('content').style.display = 'none';
+  document.getElementById('error').style.display = 'none';
+
+  const appsGrid = document.getElementById('apps-grid');
+  const pluginsGrid = document.getElementById('plugins-grid');
+  const othersGrid = document.getElementById('others-grid');
+  appsGrid.innerHTML = '';
+  pluginsGrid.innerHTML = '';
+  othersGrid.innerHTML = '';
 
   const data = await fetchHealthData();
-  if (!data) return;
+  if (!data) {
+    document.getElementById('loading').style.display = 'none';
+    return;
+  }
 
-  await renderServices(data.services || [], data.plugins || []);
-  await renderPlugins(data.plugins || []);
+  // Hide main loader and show content area. Tiles will appear as they load.
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  document.getElementById('last-updated').textContent = new Date(data.timestamp).toLocaleString();
 
-  // Use a timeout to ensure all cards are rendered before calculating summary
-  setTimeout(() => {
-    // Count healthy services/plugins
-    const healthyServices = document.querySelectorAll('#services-grid .status-healthy').length;
+  const { apps = [], plugins = [] } = data;
+  const pluginNames = new Set(plugins.map(p => p.name));
+  const appsToHealthCheck = apps.filter(app => !pluginNames.has(app));
+
+  const totalAppsCount = appsToHealthCheck.filter(app => !app.startsWith('os-')).length;
+  const totalPluginsCount = plugins.length;
+  const totalOthersCount = appsToHealthCheck.filter(app => app.startsWith('os-')).length;
+
+  const updateAllCounts = () => {
+    const healthyApps = document.querySelectorAll('#apps-grid .status-healthy').length;
     const healthyPlugins = document.querySelectorAll('#plugins-grid .status-healthy').length;
     const healthyOthers = document.querySelectorAll('#others-grid .status-healthy').length;
-    const totalServices = document.querySelectorAll('#services-grid .service-card').length;
-    const totalPlugins = (data.plugins || []).length;
-    const totalOthers = document.querySelectorAll('#others-grid .service-card').length;
 
+    const totalHealthy = healthyApps + healthyPlugins + healthyOthers;
+    const totalServices = totalAppsCount + totalPluginsCount + totalOthersCount;
 
-    // Update summary
-    document.getElementById('services-count').textContent =
-      `${healthyServices}/${totalServices}`;
-    document.getElementById('plugins-count').textContent =
-      `${healthyPlugins}/${totalPlugins}`;
-    document.getElementById('others-count').textContent =
-      `${healthyOthers}/${totalOthers}`;
+    document.getElementById('apps-count').textContent = `${healthyApps}/${totalAppsCount}`;
+    document.getElementById('plugins-count').textContent = `${healthyPlugins}/${totalPluginsCount}`;
+    document.getElementById('others-count').textContent = `${healthyOthers}/${totalOthersCount}`;
     document.getElementById('overall-health').textContent =
-      `${Math.round((healthyServices + healthyPlugins + healthyOthers) / (totalServices + totalPlugins + totalOthers) * 100)}%`;
-    document.getElementById('last-updated').textContent =
-      new Date(data.timestamp).toLocaleString();
+      `${totalServices > 0 ? Math.round((totalHealthy / totalServices) * 100) : 0}%`;
+  };
 
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('content').style.display = 'block';
-  }, 1000);
+  // Initialize counts
+  updateAllCounts();
+
+  appsToHealthCheck.forEach(app => {
+    checkAppHealth(app).then(health => {
+      const targetGrid = app.startsWith('os-') ? othersGrid : appsGrid;
+      renderCard(targetGrid, app, health);
+      updateAllCounts();
+    });
+  });
+
+  plugins.forEach(plugin => {
+    checkAppHealth(plugin.routingDomain).then(health => {
+      renderCard(pluginsGrid, plugin, health, true);
+      updateAllCounts();
+    });
+  });
 }
 
 // Initial load

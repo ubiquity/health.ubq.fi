@@ -10,21 +10,21 @@ export async function handleLegacyHealthApi(): Promise<Response> {
     const cachedData = await getCachedHealthData()
 
     // Convert to legacy format
-    const services = Object.values(cachedData.services)
+    const apps = Object.values(cachedData.apps)
     const plugins = Object.values(cachedData.plugins)
 
-    const healthyServices = services.filter(s => s.healthy).length
+    const healthyApps = apps.filter(s => s.healthy).length
     const healthyPlugins = plugins.filter(p => p.healthy).length
-    const totalEntities = services.length + plugins.length
-    const healthyEntities = healthyServices + healthyPlugins
+    const totalEntities = apps.length + plugins.length
+    const healthyEntities = healthyApps + healthyPlugins
 
     const response: LegacyHealthResponse = {
       lastUpdated: cachedData.lastGlobalUpdate,
-      services,
+      apps,
       plugins,
       summary: {
-        totalServices: services.length,
-        healthyServices,
+        totalApps: apps.length,
+        healthyApps,
         totalPlugins: plugins.length,
         healthyPlugins,
         overallHealthPercentage: totalEntities > 0 ? Math.round((healthyEntities / totalEntities) * 100) : 0
