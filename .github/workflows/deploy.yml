@@ -9,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      id-token: write # Needed for auth with Deno Deploy
       contents: read # Needed to clone the repository
 
     steps:
@@ -26,3 +25,5 @@ jobs:
         with:
           project: "health-ubq-fi"
           entrypoint: "src/server/index.ts"
+        env:
+          DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
