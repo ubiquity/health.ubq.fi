@@ -8,7 +8,7 @@ import type { ProxyStatusResponse, ProxyManifestResponse } from '../storage/type
  * Check app health status
  */
 export async function checkAppHealth(domain: string): Promise<ProxyStatusResponse> {
-  const SPECIAL_DOMAINS = ["xp.ubq.fi", "partner.ubq.fi"];
+  const SPECIAL_DOMAINS = ["xp.ubq.fi", "partner.ubq.fi", "ubq.fi"];
   const MAX_RETRIES = 2;
   const INITIAL_TIMEOUT = 5000; // 5s
   let lastError: Error | undefined;
