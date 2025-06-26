@@ -78,5 +78,7 @@ export default { fetch: serve };
 
 // For local development, Deno.serve is now implicitly called by the task runner
 if (import.meta.main) {
-  await generateDevtoolsJson();
+  if (!Deno.env.get("DENO_DEPLOYMENT_ID")) {
+    await generateDevtoolsJson();
+  }
 }
