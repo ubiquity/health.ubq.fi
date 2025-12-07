@@ -1,30 +1,59 @@
-name: Deploy
+name: Deploy (Deno Deploy)
+
 on:
   push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-22.04
     permissions:
-      id-token: write # Needed for auth with Deno Deploy
-      contents: read # Needed to clone the repository
-
+      contents: read
+      id-token: write
+    env:
+      PROJECT: health-ubq-fi
+      PREVIEW_PROJECT: health-ubq-fi-preview
+      PROD_BRANCH: ${{ github.event.repository.default_branch }}
     steps:
-      - name: Clone repository
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install Deno
+      - name: Set up Deno
         uses: denoland/setup-deno@v2
         with:
-          deno-version: 1.44.0
+          deno-version: 2.x
 
-      - name: Upload to Deno Deploy
-        uses: denoland/deployctl@v1
-        with:
-          project: "health-ubq-fi"
-          entrypoint: "src/server/index.ts"
+      - name: Install deployctl
+        run: |
+          set -euo pipefail
+          deno install -gArf jsr:@deno/deployctl@1.12.0
+          echo "${HOME}/.deno/bin" >> "$GITHUB_PATH"
+
+      - name: Deploy
         env:
           DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          target="$PREVIEW_PROJECT"
+          prod_flag=""
+          if [ "${GITHUB_REF_NAME}" = "$PROD_BRANCH" ]; then
+            target="$PROJECT"
+            prod_flag="--prod"
+          fi
+
+          # Derive excludes from .gitignore to avoid shipping dev/test artifacts.
+          mapfile -t ignored_paths < <(git ls-files -o --ignored --exclude-standard --directory --no-empty-directory)
+          excludes=()
+          for path in "${ignored_paths[@]}"; do
+            excludes+=("--exclude=${path}")
+          done
+
+          deployctl deploy \
+            --project="$target" \
+            $prod_flag \
+            --entrypoint=src/server/index.ts \
+            --root="." \
+            --token="$DENO_DEPLOY_TOKEN" \
+            --include="." \
+            --include="deno.json" \
+            "${excludes[@]}"
