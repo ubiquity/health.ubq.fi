@@ -1,0 +1,16 @@
+name: Deno Deploy
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
+    with:
+      project: health-ubq-fi
+      entrypoint: src/server/index.ts
+      include: |
+        src/**
+    secrets:
+      DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
