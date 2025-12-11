@@ -15,7 +15,6 @@ jobs:
       entrypoint: src/server/index.ts
       include: |
         src/**
-      index_html_path: src/client/dashboard/index.html
       extra_paths: |
         /api/apps
       debug_fetch_fail: true
