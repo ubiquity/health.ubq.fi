@@ -15,10 +15,8 @@ jobs:
       entrypoint: src/server/index.ts
       include: |
         src/**
-      debug_fetch_paths: |
-        /
-        /style.css
-        /health-checker.js
+      index_html_path: src/client/dashboard/index.html
+      extra_paths: |
         /api/apps
       debug_fetch_fail: true
     secrets: inherit
