@@ -107,7 +107,7 @@ jobs:
             --build-manifest=false
 
   delete-branch-app:
-    if: github.event_name == 'delete'
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
