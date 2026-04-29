@@ -1,4 +1,4 @@
-import { ensureDir } from "https://deno.land/std@0.224.0/fs/ensure_dir.ts";
+import { ensureDir } from "@std/fs/ensure-dir";
 
 const DEVTOOLS_DIR = "src/client/.well-known/appspecific";
 const DEVTOOLS_FILE = `${DEVTOOLS_DIR}/com.chrome.devtools.json`;
@@ -31,5 +31,8 @@ export async function generateDevtoolsJson() {
     },
   };
 
-  await Deno.writeTextFile(DEVTOOLS_FILE, JSON.stringify(devtoolsConfig, null, 2));
+  await Deno.writeTextFile(
+    DEVTOOLS_FILE,
+    JSON.stringify(devtoolsConfig, null, 2),
+  );
 }
