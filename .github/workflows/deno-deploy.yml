@@ -2,21 +2,28 @@ name: Deno Deploy
 
 on:
   push:
-  pull_request:
   workflow_dispatch:
 
 jobs:
   deploy:
     permissions:
+      actions: read
       contents: read
-      id-token: write
+      issues: write
+      pull-requests: write
     uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
     with:
       project: health-ubq-fi
+      deploy_platform: deno2
       entrypoint: src/server/index.ts
+      install_command: deno install
+      build_command: deno task build
       include: |
         src/**
+      index_html_path: src/client/dashboard/index.html
       extra_paths: |
         /api/apps
       debug_fetch_fail: true
+      required_env: |
+        DENO_DEPLOY_TOKEN
     secrets: inherit
