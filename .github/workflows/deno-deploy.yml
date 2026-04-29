@@ -6,6 +6,11 @@ on:
 
 jobs:
   deploy:
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: write
     uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@codex/deno-2-programmatic
     with:
       project: health-ubq-fi
