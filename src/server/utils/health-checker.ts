@@ -19,7 +19,12 @@ function isManifest(value: unknown): value is Record<string, unknown> {
 export async function checkAppHealth(
   domain: string,
 ): Promise<ProxyStatusResponse> {
-  const SPECIAL_DOMAINS = ["xp.ubq.fi", "partner.ubq.fi", "ubq.fi"];
+  const SPECIAL_DOMAINS = [
+    "xp.ubq.fi",
+    "partner.ubq.fi",
+    "ubq.fi",
+    "www.ubq.fi",
+  ];
   const MAX_RETRIES = 2;
   const INITIAL_TIMEOUT = 5000; // 5s
   let lastError: Error | undefined;
@@ -28,7 +33,7 @@ export async function checkAppHealth(
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       let targetDomain = domain;
-      if (domain === "root") {
+      if (domain === "root" || domain.trim() === "") {
         targetDomain = "ubq.fi";
       } else if (!domain.includes(".")) {
         targetDomain = `${domain}.ubq.fi`;
