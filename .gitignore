@@ -4,3 +4,6 @@ node_modules
 server.pid
 src/client/.well-known/appspecific/com.chrome.devtools.json
 .uuid
+
+# runtime cache written by the health monitor
+health-cache.json

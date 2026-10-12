@@ -119,3 +119,11 @@ The dashboard provides real-time monitoring with:
 - Individual app/plugin details
 - Error reporting
 - Automatic refresh every 5 minutes
+
+## VPS hosting (2026-10-12)
+
+Runs on the VPS as `ubiquity-health.service` (`deno serve --port 8022`), routed
+VPS-first by the router (`VPS_ORIGIN_MAP` -> `origin.ubq.fi`) with a Deno Deploy
+fallback. Health data is an in-memory/file cache (`health-cache.json`, written in
+the working directory and git-ignored); it repopulates from `/health/update`
+calls. Deno Deploy shuts down in April 2027.
