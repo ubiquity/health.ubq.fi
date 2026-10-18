@@ -1,0 +1,50 @@
+name: Workers Candidate Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workers-health-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WRANGLER_LOG_PATH: .wrangler/logs/wrangler.log
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.21.0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: 2.9.7
+      - run: bun install --frozen-lockfile
+      - run: deno task build
+      - run: deno test src/server/utils/discovery-hosts_test.ts
+      - run: bun run deploy:types --check
+      - run: bun run check
+      - run: bun run deploy:dry-run
+      - name: Initialize isolated candidate cache and deploy candidate
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test "$CLOUDFLARE_ACCOUNT_ID" = "5c0228bee348f4cf48829ffe21b61fe9"
+          bun x wrangler d1 migrations apply uos-health-candidate --remote
+          bun run deploy

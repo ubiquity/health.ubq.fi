@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "uos-health-candidate",
+  "account_id": "5c0228bee348f4cf48829ffe21b61fe9",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-18",
+  "compatibility_flags": [
+    "global_fetch_strictly_public",
+    "no_cots_on_external_fetch"
+  ],
+  "workers_dev": true,
+  "routes": [],
+  "triggers": { "crons": [] },
+  "assets": {
+    "directory": "./src/client/dashboard",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "none"
+  },
+  "d1_databases": [{
+    "binding": "UOS_HEALTH_CACHE",
+    "database_name": "uos-health-candidate",
+    "database_id": "878dab03-df83-495c-97a1-5037c00e4fcf",
+    "migrations_dir": "migrations"
+  }],
+  "version_metadata": { "binding": "UOS_VERSION" },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  }
+}

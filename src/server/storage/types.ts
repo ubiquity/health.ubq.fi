@@ -45,6 +45,8 @@ export interface AppsListResponse {
   }[];
   others: string[];
   timestamp: string;
+  stale?: boolean;
+  error?: string;
 }
 
 export interface ProxyStatusResponse {

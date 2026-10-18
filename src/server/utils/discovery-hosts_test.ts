@@ -1,5 +1,5 @@
 /**
- * Focused regression tests for discovery host normalization and probe targets.
+ * Focused regression tests for GitHub discovery normalization and probe targets.
  *
  * Context: the accepted router discovery catalog (ubq.fi-router 06748e4)
  * publishes `https://ubq.fi/` and `https://www.ubq.fi/` in `/sitemap.json`. The
@@ -16,13 +16,13 @@
 import { clearCache, getAppsFromRouter } from "./router-api.ts";
 import { checkAppHealth, checkPluginManifest } from "./health-checker.ts";
 
-const SITEMAP_URL = "https://ubq.fi/sitemap.json";
-const PLUGIN_MAP_URL = "https://ubq.fi/plugin-map.json";
+const SITEMAP_URL = "https://api.github.com/orgs/ubiquity/repos?per_page=100";
+const PLUGIN_MAP_URL =
+  "https://api.github.com/orgs/ubiquity-os-marketplace/repos?per_page=100";
 
 /**
- * These tests exercise the real checker module. Its module-load cleanup timer
- * stays pending for the process lifetime, so disable the op/resource sanitizers
- * rather than reporting that pre-existing interval as a test leak.
+ * Keep the original mocked-fetch suite's sanitizer settings; the actual runtime
+ * and adapter-owned timer lifecycle are exercised by separate workerd/Bun tests.
  */
 const checkerTestOptions = {
   sanitizeOps: false,
@@ -77,33 +77,22 @@ function stubDiscoveryFetch(): {
     requests.push({ url, method });
 
     if (url === SITEMAP_URL) {
-      return Promise.resolve(jsonResponse({
-        version: "1.0",
-        generated: "2026-09-22T00:00:00.000Z",
-        generator: "ubq.fi-router",
-        totalUrls: 3,
-        urls: [
-          { url: "https://ubq.fi/" },
-          { url: "https://www.ubq.fi/" },
-          { url: "https://pay.ubq.fi/" },
-        ],
-      }));
+      return Promise.resolve(jsonResponse([
+        { name: "ubq.fi" },
+        { name: "www.ubq.fi" },
+        { name: "pay.ubq.fi" },
+        { name: "not-an-app" },
+      ]));
     }
 
     if (url === PLUGIN_MAP_URL) {
-      return Promise.resolve(jsonResponse({
-        version: "1.0",
-        generated: "2026-09-22T00:00:00.000Z",
-        generator: "ubq.fi-router",
-        totalPlugins: 1,
-        plugins: [{
-          pluginName: "os-example",
-          url: "https://os-example.ubq.fi/",
-          displayName: "OS Example",
-          description: "Representative plugin",
-          deployments: { main: "https://os-example.ubq.fi/" },
-        }],
-      }));
+      return Promise.resolve(jsonResponse([
+        { name: "example", description: "Representative plugin" },
+        {
+          name: ".github",
+          description: "Organization metadata has no valid probe host",
+        },
+      ]));
     }
 
     return Promise.resolve(
@@ -255,6 +244,182 @@ Deno.test({
       assertNoEmptyHost(requests);
     } finally {
       restore();
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "GitHub pagination completes discovery and preserves last-known-good data on an invalid next origin",
+  ...checkerTestOptions,
+  fn: async () => {
+    const originalFetch = globalThis.fetch;
+    const originalNow = Date.now;
+    const requests: string[] = [];
+    let invalidNext = false;
+    clearCache();
+    globalThis.fetch = (input) => {
+      const url = String(input);
+      requests.push(url);
+      if (url === PLUGIN_MAP_URL) {
+        return Promise.resolve(jsonResponse([{ name: "example" }]));
+      }
+      if (url.includes("page=2")) {
+        return Promise.resolve(
+          jsonResponse([{ name: "pay.ubq.fi", archived: true }]),
+        );
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify([{ name: "ubq.fi" }]), {
+          headers: {
+            "Content-Type": "application/json",
+            Link: `<${
+              invalidNext
+                ? "https://untrusted.invalid/next"
+                : SITEMAP_URL + "&page=2"
+            }>; rel="next"`,
+          },
+        }),
+      );
+    };
+    try {
+      const first = await getAppsFromRouter();
+      assertEquals(
+        first.apps,
+        ["", "pay"],
+        "all pages and historical archived entries remain included",
+      );
+      assertEquals(
+        first.plugins[0].variants,
+        ["main", "development"],
+        "historical plugin variants remain compatible",
+      );
+      invalidNext = true;
+      Date.now = () => originalNow() + 5 * 60 * 1000 + 1;
+      const stale = await getAppsFromRouter();
+      assert(stale.stale, "upstream pagination failure must be visible");
+      assert(
+        stale.error?.includes("Invalid GitHub pagination"),
+        "pagination failure must explain the rejected source",
+      );
+      assertEquals(
+        stale.apps,
+        first.apps,
+        "failure must preserve the last-known-good catalog",
+      );
+      assert(
+        requests.every((url) => url.startsWith("https://api.github.com/")),
+        "pagination cannot redirect probes to an arbitrary origin",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      Date.now = originalNow;
+      clearCache();
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "GitHub discovery fails explicitly when pagination exceeds the free-tier request budget",
+  ...checkerTestOptions,
+  fn: async () => {
+    const originalFetch = globalThis.fetch;
+    let requests = 0;
+    clearCache();
+    globalThis.fetch = (input) => {
+      requests++;
+      const url = new URL(String(input));
+      const page = Number(url.searchParams.get("page") || 1);
+      url.searchParams.set("page", String(page + 1));
+      return Promise.resolve(
+        new Response(JSON.stringify([{ name: "ubq.fi" }]), {
+          headers: {
+            "Content-Type": "application/json",
+            Link: `<${url.href}>; rel="next"`,
+          },
+        }),
+      );
+    };
+    try {
+      let failure = "";
+      try {
+        await getAppsFromRouter();
+      } catch (error) {
+        failure = String(error);
+      }
+      assert(
+        failure.includes("12-request budget"),
+        "oversized discovery must fail instead of silently truncating",
+      );
+      assertEquals(
+        requests,
+        12,
+        "external fetch budget is shared by both organizations",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      clearCache();
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "local discovery admits one crawl and exposes concurrent cold or stale states without sharing I/O promises",
+  ...checkerTestOptions,
+  fn: async () => {
+    const { requests, restore } = stubDiscoveryFetch();
+    const stubbedFetch = globalThis.fetch;
+    const originalNow = Date.now;
+    clearCache();
+    globalThis.fetch = async (input, init) => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return stubbedFetch(input, init);
+    };
+    try {
+      const cold = await Promise.allSettled(
+        Array.from({ length: 8 }, () => getAppsFromRouter()),
+      );
+      assertEquals(
+        cold.filter((result) => result.status === "fulfilled").length,
+        1,
+        "one cold caller owns the local refresh",
+      );
+      assert(
+        cold.filter((result) => result.status === "rejected").every((result) =>
+          String(result.reason).includes("refresh is in progress")
+        ),
+        "other cold callers must receive an explicit retry state",
+      );
+      assertEquals(
+        requests.length,
+        2,
+        "cold concurrency performs one organization crawl",
+      );
+      Date.now = () => originalNow() + 5 * 60 * 1000 + 1;
+      const warm = await Promise.all(
+        Array.from({ length: 8 }, () => getAppsFromRouter()),
+      );
+      assertEquals(
+        warm.filter((result) => result.stale).length,
+        7,
+        "other warm callers reuse last-known-good data during refresh",
+      );
+      assert(
+        warm.every((result) => result.apps.includes("pay")),
+        "refresh admission cannot erase useful cached data",
+      );
+      assertEquals(
+        requests.length,
+        4,
+        "expiry concurrency still performs only one new organization crawl",
+      );
+    } finally {
+      globalThis.fetch = stubbedFetch;
+      restore();
+      Date.now = originalNow;
+      clearCache();
     }
   },
 });

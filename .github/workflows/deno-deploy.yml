@@ -1,7 +1,6 @@
 name: Deno Deploy
 
 on:
-  push:
   workflow_dispatch:
 
 jobs:

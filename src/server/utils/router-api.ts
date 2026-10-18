@@ -1,244 +1,232 @@
-/**
- * Dynamic apps and plugins fetcher from live endpoints
- */
+/** Public GitHub organization catalogs retain the router's historical discovery source. */
+import type { AppsListResponse } from "../storage/types.ts";
+import type { DiscoveryCacheStore } from "../storage/health-store.ts";
 
-import type { AppsListResponse } from '../storage/types.ts'
-
-// Cache configuration
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-let cache: {
-  data: AppsListResponse | null
-  timestamp: number
-} = {
+const CACHE_DURATION = 5 * 60 * 1000;
+const MAX_DISCOVERY_REQUESTS = 12;
+const REFRESH_TIMEOUT = 30_000;
+const REFRESH_LEASE_DURATION = 45_000;
+const GITHUB_ORIGIN = "https://api.github.com";
+let cache: { data: AppsListResponse | null; timestamp: number } = {
   data: null,
-  timestamp: 0
-}
+  timestamp: 0,
+};
+// Local adapters share admission state, never a request's in-flight I/O promise.
+let localRefreshInProgress = false;
 
-/**
- * Extract subdomain from URL
- * @param url - Full URL like https://pay.ubq.fi
- * @returns Subdomain like 'pay' or empty string for root domain
- */
-function extractSubdomain(url: string): string {
-  try {
-    const parsedUrl = new URL(url)
-    const hostname = parsedUrl.hostname
-
-    // Handle root domain (ubq.fi)
-    if (hostname === 'ubq.fi') {
-      return ''
-    }
-
-    // Extract subdomain from hostname like pay.ubq.fi -> pay
-    const parts = hostname.split('.')
-    if (parts.length >= 3 && parts[parts.length - 2] === 'ubq' && parts[parts.length - 1] === 'fi') {
-      return parts.slice(0, -2).join('.')
-    }
-
-    return ''
-  } catch {
-    return ''
+export class DiscoveryRefreshInProgressError extends Error {
+  constructor() {
+    super("Discovery refresh is in progress; retry shortly");
+    this.name = "DiscoveryRefreshInProgressError";
   }
 }
 
-/**
- * Fetch and parse apps from sitemap.json
- */
-async function fetchApps(): Promise<string[]> {
-  const startTime = Date.now()
-  const url = 'https://ubq.fi/sitemap.json'
+interface Repository {
+  name: string;
+  description?: string | null;
+}
 
-  console.log(`[SITEMAP_FETCH] Starting request to ${url}`)
+function isRepository(value: unknown): value is Repository {
+  return typeof value === "object" && value !== null && "name" in value &&
+    typeof value.name === "string" &&
+    (!("description" in value) || value.description === null ||
+      typeof value.description === "string");
+}
 
-  try {
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(60000) // 60 second timeout
-    })
+function validSubdomain(value: string): boolean {
+  return value === "" ||
+    value.split(".").every((label) =>
+      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label)
+    );
+}
 
-    const responseTime = Date.now() - startTime
-    console.log(`[SITEMAP_FETCH] Request completed in ${responseTime}ms`)
-
-    if (!response.ok) {
-      console.error(`[SITEMAP_FETCH] HTTP Error ${response.status}: ${response.statusText}`)
-      const headersObj: Record<string, string> = {}
-      response.headers.forEach((value, key) => {
-        headersObj[key] = value
-      })
-      console.error(`[SITEMAP_FETCH] Response headers:`, headersObj)
-
-      try {
-        const responseText = await response.text()
-        console.error(`[SITEMAP_FETCH] Response body:`, responseText.substring(0, 500))
-      } catch (textError) {
-        console.error(`[SITEMAP_FETCH] Failed to read response body:`, textError)
-      }
-
-      console.error(`[SITEMAP_FETCH] Network error type: HTTP_ERROR`)
-      throw new Error(`Failed to fetch sitemap: ${response.status} ${response.statusText}`)
+async function fetchRepositories(
+  organization: string,
+  budget: { remaining: number },
+  refreshSignal: AbortSignal,
+): Promise<Repository[]> {
+  const path = `/orgs/${organization}/repos`;
+  let next: string | null = `${GITHUB_ORIGIN}${path}?per_page=100`;
+  const visited = new Set<string>();
+  const repositories: Repository[] = [];
+  while (next) {
+    const url: URL = new URL(next);
+    if (
+      url.origin !== GITHUB_ORIGIN || url.pathname !== path || url.username ||
+      url.password || visited.has(url.href)
+    ) {
+      throw new Error(`Invalid GitHub pagination for ${organization}`);
     }
+    if (budget.remaining-- <= 0) {
+      throw new Error("GitHub discovery exceeded its 12-request budget");
+    }
+    visited.add(url.href);
+    const response: Response = await fetch(url, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "uos-health-monitor",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      redirect: "manual",
+      signal: AbortSignal.any([refreshSignal, AbortSignal.timeout(15000)]),
+    });
+    if (!response.ok) {
+      const reset = response.headers.get("x-ratelimit-reset");
+      await response.body?.cancel();
+      throw new Error(
+        `GitHub discovery for ${organization} failed: HTTP ${response.status}${
+          reset ? ` (rate limit reset ${reset})` : ""
+        }`,
+      );
+    }
+    const data: unknown = await response.json();
+    if (!Array.isArray(data) || !data.every(isRepository)) {
+      throw new Error(`Invalid GitHub repository list for ${organization}`);
+    }
+    repositories.push(...data);
+    next =
+      response.headers.get("link")?.match(/<([^>]+)>;\s*rel="next"/)?.[1] ??
+        null;
+  }
+  return repositories;
+}
 
-    const data = await response.json();
+export async function getAppsFromRouter(
+  persistent?: DiscoveryCacheStore,
+): Promise<AppsListResponse> {
+  const now = Date.now();
+  if (cache.data && now - cache.timestamp < CACHE_DURATION) return cache.data;
+  if (persistent) {
+    try {
+      const saved = await persistent.getDiscoveryCache();
+      if (
+        saved && (!cache.data || Date.parse(saved.timestamp) > cache.timestamp)
+      ) {
+        cache = { data: saved, timestamp: Date.parse(saved.timestamp) };
+      }
+      if (cache.data && now - cache.timestamp < CACHE_DURATION) {
+        return cache.data;
+      }
+    } catch (error) {
+      console.warn(
+        JSON.stringify({
+          event: "discovery_cache_read_failed",
+          message: String(error),
+        }),
+      );
+    }
+  }
+  let admitted = false;
+  const owner = persistent ? crypto.randomUUID() : "";
+  const refreshStartedAt = Date.now();
+  const refreshSignal = AbortSignal.timeout(REFRESH_TIMEOUT);
+  try {
+    if (persistent) {
+      admitted = await persistent.acquireDiscoveryRefresh(
+        owner,
+        refreshStartedAt,
+        refreshStartedAt + REFRESH_LEASE_DURATION,
+      );
+      if (!admitted) throw new DiscoveryRefreshInProgressError();
+      // Another request may have refreshed between the first read and admission.
+      const saved = await persistent.getDiscoveryCache();
+      if (saved && Date.now() - Date.parse(saved.timestamp) < CACHE_DURATION) {
+        cache = { data: saved, timestamp: Date.parse(saved.timestamp) };
+        return saved;
+      }
+    } else {
+      if (localRefreshInProgress) throw new DiscoveryRefreshInProgressError();
+      localRefreshInProgress = true;
+      admitted = true;
+    }
+    const budget = { remaining: MAX_DISCOVERY_REQUESTS };
+    const results = await Promise.allSettled([
+      fetchRepositories("ubiquity", budget, refreshSignal),
+      fetchRepositories("ubiquity-os-marketplace", budget, refreshSignal),
+    ]);
+    const failed = results.find((result) => result.status === "rejected");
+    if (failed?.status === "rejected") throw failed.reason;
+    const [appResult, pluginResult] = results;
+    if (
+      appResult.status !== "fulfilled" || pluginResult.status !== "fulfilled"
+    ) throw new Error("GitHub discovery did not complete");
+    const appRepositories = appResult.value;
+    const pluginRepositories = pluginResult.value;
     const apps = new Set<string>();
-
-    if (data.urls && Array.isArray(data.urls)) {
-      for (const item of data.urls) {
-        const subdomain = extractSubdomain(item.url);
-        if (subdomain !== null) {
-          apps.add(subdomain);
-        }
+    for (const repository of appRepositories) {
+      const name = repository.name.toLowerCase();
+      if (name !== "ubq.fi" && !name.endsWith(".ubq.fi")) continue;
+      const subdomain = name === "ubq.fi" ? "" : name.slice(0, -7);
+      if (validSubdomain(subdomain)) apps.add(subdomain);
+    }
+    const plugins: AppsListResponse["plugins"] = [];
+    for (const repository of pluginRepositories) {
+      const label = `os-${repository.name.toLowerCase()}`;
+      if (label.includes(".") || !validSubdomain(label)) continue;
+      const routingDomain = `${label}.ubq.fi`;
+      plugins.push({
+        name: repository.name,
+        variants: ["main", "development"],
+        url: `https://${routingDomain}/`,
+        routingDomain,
+        displayName: repository.name,
+        description: repository.description || `UBQ Plugin: ${repository.name}`,
+      });
+    }
+    const response: AppsListResponse = {
+      apps: Array.from(apps).sort(),
+      plugins,
+      others: [],
+      timestamp: new Date().toISOString(),
+    };
+    if (apps.size === 0 && plugins.length === 0) {
+      throw new Error("GitHub discovery returned no valid app or plugin hosts");
+    }
+    if (persistent) {
+      if (!await persistent.saveDiscoveryCache(response, owner, Date.now())) {
+        throw new Error("Discovery refresh lease expired; retry shortly");
       }
     }
-
-    console.log(`[SITEMAP_FETCH] Successfully parsed ${apps.size} apps`)
-    return Array.from(apps).sort();
-
+    cache = { data: response, timestamp: Date.parse(response.timestamp) };
+    console.log(
+      JSON.stringify({
+        event: "github_discovery",
+        apps: response.apps.length,
+        plugins: plugins.length,
+        requests: MAX_DISCOVERY_REQUESTS - budget.remaining,
+      }),
+    );
+    return response;
   } catch (error) {
-    const responseTime = Date.now() - startTime
-    console.error(`[SITEMAP_FETCH] Request failed after ${responseTime}ms`)
-
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      console.error(`[SITEMAP_FETCH] Network error type: NETWORK_ERROR`)
-      console.error(`[SITEMAP_FETCH] Possible DNS or connection failure`)
-    } else if (error instanceof DOMException && error.name === 'TimeoutError') {
-      console.error(`[SITEMAP_FETCH] Network error type: TIMEOUT_ERROR`)
-      console.error(`[SITEMAP_FETCH] Request exceeded 60 second timeout`)
-    } else if (error instanceof SyntaxError) {
-      console.error(`[SITEMAP_FETCH] Network error type: PARSE_ERROR`)
-      console.error(`[SITEMAP_FETCH] Failed to parse JSON response`)
-    } else {
-      console.error(`[SITEMAP_FETCH] Network error type: UNKNOWN_ERROR`)
+    if (
+      cache.data &&
+      (cache.data.apps.length > 0 || cache.data.plugins.length > 0)
+    ) {
+      return {
+        ...cache.data,
+        stale: true,
+        error: error instanceof Error ? error.message : "Discovery failed",
+      };
     }
-
-    console.error(`[SITEMAP_FETCH] Error details:`, error);
-    return []; // Return empty array on error
-  }
-}
-
-/**
- * Fetch and parse plugins from plugin-map.json
- */
-async function fetchPlugins(): Promise<AppsListResponse['plugins']> {
-  const startTime = Date.now()
-  const url = 'https://ubq.fi/plugin-map.json'
-
-  console.log(`[PLUGIN_FETCH] Starting request to ${url}`)
-
-  try {
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(60000) // 60 second timeout
-    })
-
-    const responseTime = Date.now() - startTime
-    console.log(`[PLUGIN_FETCH] Request completed in ${responseTime}ms`)
-
-    if (!response.ok) {
-      console.error(`[PLUGIN_FETCH] HTTP Error ${response.status}: ${response.statusText}`)
-      const headersObj: Record<string, string> = {}
-      response.headers.forEach((value, key) => {
-        headersObj[key] = value
-      })
-      console.error(`[PLUGIN_FETCH] Response headers:`, headersObj)
-
+    throw error;
+  } finally {
+    if (admitted && persistent) {
       try {
-        const responseText = await response.text()
-        console.error(`[PLUGIN_FETCH] Response body:`, responseText.substring(0, 500))
-      } catch (textError) {
-        console.error(`[PLUGIN_FETCH] Failed to read response body:`, textError)
+        await persistent.releaseDiscoveryRefresh(owner);
+      } catch (error) {
+        console.warn(
+          JSON.stringify({
+            event: "discovery_refresh_release_failed",
+            message: String(error),
+          }),
+        );
       }
-
-      console.error(`[PLUGIN_FETCH] Network error type: HTTP_ERROR`)
-      throw new Error(`Failed to fetch plugin map: ${response.status} ${response.statusText}`)
+    } else if (admitted) {
+      localRefreshInProgress = false;
     }
-
-    const data = await response.json();
-    const plugins: AppsListResponse['plugins'] = [];
-
-    if (data.plugins && Array.isArray(data.plugins)) {
-      for (const plugin of data.plugins) {
-        plugins.push({
-          name: plugin.pluginName,
-          url: plugin.url,
-          routingDomain: new URL(plugin.url).hostname,
-          variants: plugin.deployments ? Object.keys(plugin.deployments) : ['main'],
-          displayName: plugin.displayName,
-          description: plugin.description
-        });
-      }
-    }
-
-    console.log(`[PLUGIN_FETCH] Successfully parsed ${plugins.length} plugins`)
-    return plugins;
-
-  } catch (error) {
-    const responseTime = Date.now() - startTime
-    console.error(`[PLUGIN_FETCH] Request failed after ${responseTime}ms`)
-
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      console.error(`[PLUGIN_FETCH] Network error type: NETWORK_ERROR`)
-      console.error(`[PLUGIN_FETCH] Possible DNS or connection failure`)
-    } else if (error instanceof DOMException && error.name === 'TimeoutError') {
-      console.error(`[PLUGIN_FETCH] Network error type: TIMEOUT_ERROR`)
-      console.error(`[PLUGIN_FETCH] Request exceeded 60 second timeout`)
-    } else if (error instanceof SyntaxError) {
-      console.error(`[PLUGIN_FETCH] Network error type: PARSE_ERROR`)
-      console.error(`[PLUGIN_FETCH] Failed to parse JSON response`)
-    } else {
-      console.error(`[PLUGIN_FETCH] Network error type: UNKNOWN_ERROR`)
-    }
-
-    console.error(`[PLUGIN_FETCH] Error details:`, error);
-    return []; // Return empty array on error
   }
 }
 
-/**
- * Get apps and plugins dynamically with caching
- */
-export async function getAppsFromRouter(): Promise<AppsListResponse> {
-  // Check cache validity
-  const now = Date.now()
-  const cacheAge = cache.data ? now - cache.timestamp : 0
-
-  if (cache.data && cacheAge < CACHE_DURATION) {
-    console.log(`[CACHE] Using cached data (age: ${Math.round(cacheAge / 1000)}s)`)
-    return cache.data
-  }
-
-  console.log(`[CACHE] Cache ${cache.data ? 'expired' : 'empty'}, fetching fresh data`)
-
-  // Fetch fresh data
-  const fetchStartTime = Date.now()
-  const [apps, plugins] = await Promise.all([
-    fetchApps(),
-    fetchPlugins()
-  ])
-
-  const fetchTime = Date.now() - fetchStartTime
-  console.log(`[CACHE] Fresh data fetched in ${fetchTime}ms`)
-
-  const response: AppsListResponse = {
-    apps,
-    plugins,
-    others: [],
-    timestamp: new Date().toISOString()
-  }
-
-  // Update cache
-  cache = {
-    data: response,
-    timestamp: now
-  }
-
-  console.log(`[CACHE] Cache updated with ${apps.length} apps and ${plugins.length} plugins`)
-  return response
-}
-
-/**
- * Clear the cache (useful for testing or forced refresh)
- */
 export function clearCache(): void {
-  cache = {
-    data: null,
-    timestamp: 0
-  }
+  cache = { data: null, timestamp: 0 };
 }
