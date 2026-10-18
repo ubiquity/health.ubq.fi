@@ -11,7 +11,7 @@
     "test": "bun --no-env-file test tests/bun_test.ts --timeout 30000",
     "test:workers": "bun --no-env-file test tests/worker_test.ts --timeout 60000",
     "check": "bun run typecheck && bun run test && bun run test:workers",
-    "deploy:types": "WRANGLER_LOG_PATH=.wrangler/logs/wrangler.log WRANGLER_SEND_METRICS=false wrangler types worker-configuration.d.ts",
+    "deploy:types": "bash -c 'WRANGLER_LOG_PATH=.wrangler/logs/wrangler.log WRANGLER_SEND_METRICS=false wrangler types worker-configuration.d.ts \"$@\" && deno fmt worker-configuration.d.ts \"$@\"' --",
     "deploy:dry-run": "WRANGLER_LOG_PATH=.wrangler/logs/wrangler.log WRANGLER_SEND_METRICS=false wrangler deploy --dry-run --outdir .worker-build",
     "deploy": "WRANGLER_LOG_PATH=.wrangler/logs/wrangler.log WRANGLER_SEND_METRICS=false wrangler deploy"
   },
