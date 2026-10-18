@@ -193,7 +193,9 @@ export class RateLimiter {
 // Global rate limiter instance
 export const globalRateLimiter = new RateLimiter();
 
-// Cleanup old entries every 30 minutes
-setInterval(() => {
-  globalRateLimiter.cleanup();
-}, 30 * 60 * 1000);
+// Runtime adapters own timer lifetimes; Worker isolates never schedule this timer.
+export function startRateLimiterCleanup(): ReturnType<typeof setInterval> {
+  return setInterval(() => {
+    globalRateLimiter.cleanup();
+  }, 30 * 60 * 1000);
+}

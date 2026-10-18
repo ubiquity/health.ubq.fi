@@ -2,21 +2,23 @@
  * Legacy health API endpoint for compatibility
  */
 
-import { getCachedHealthData } from '../storage/kv.ts'
-import type { LegacyHealthResponse } from '../storage/types.ts'
+import type { HealthStore } from "../storage/health-store.ts";
+import type { LegacyHealthResponse } from "../storage/types.ts";
 
-export async function handleLegacyHealthApi(): Promise<Response> {
+export async function handleLegacyHealthApi(
+  store: HealthStore,
+): Promise<Response> {
   try {
-    const cachedData = await getCachedHealthData()
+    const cachedData = await store.getCachedHealthData();
 
     // Convert to legacy format
-    const apps = Object.values(cachedData.apps)
-    const plugins = Object.values(cachedData.plugins)
+    const apps = Object.values(cachedData.apps);
+    const plugins = Object.values(cachedData.plugins);
 
-    const healthyApps = apps.filter(s => s.healthy).length
-    const healthyPlugins = plugins.filter(p => p.healthy).length
-    const totalEntities = apps.length + plugins.length
-    const healthyEntities = healthyApps + healthyPlugins
+    const healthyApps = apps.filter((s) => s.healthy).length;
+    const healthyPlugins = plugins.filter((p) => p.healthy).length;
+    const totalEntities = apps.length + plugins.length;
+    const healthyEntities = healthyApps + healthyPlugins;
 
     const response: LegacyHealthResponse = {
       lastUpdated: cachedData.lastGlobalUpdate,
@@ -27,28 +29,33 @@ export async function handleLegacyHealthApi(): Promise<Response> {
         healthyApps,
         totalPlugins: plugins.length,
         healthyPlugins,
-        overallHealthPercentage: totalEntities > 0 ? Math.round((healthyEntities / totalEntities) * 100) : 0
-      }
-    }
+        overallHealthPercentage: totalEntities > 0
+          ? Math.round((healthyEntities / totalEntities) * 100)
+          : 0,
+      },
+    };
 
     return new Response(JSON.stringify(response), {
       headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=60',
-        'Access-Control-Allow-Origin': '*'
-      }
-    })
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=60",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   } catch (error) {
-    console.error('Legacy health API error:', error)
-    return new Response(JSON.stringify({
-      error: 'Failed to get health data',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
-    })
+    console.error("Legacy health API error:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Failed to get health data",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      },
+    );
   }
 }

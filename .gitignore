@@ -7,3 +7,5 @@ src/client/.well-known/appspecific/com.chrome.devtools.json
 
 # runtime cache written by the health monitor
 health-cache.json
+.wrangler/
+.worker-build/
